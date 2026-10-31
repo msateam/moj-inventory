@@ -20,7 +20,7 @@ input,select{width:100%;border:1px solid var(--line);background:#fff;padding:12p
 </head>
 <body>
 <section id="login" class="panel">
- <div class="brand">MOJ INVENTORY<small>ورود امن مدیر</small></div>
+ <div class="brand">MOJ INVENTORY<small>ورود امن کاربران</small></div>
  <label>ایمیل</label><input id="email" type="email" autocomplete="username" placeholder="ایمیل حساب مدیر">
  <label>رمز عبور</label><input id="password" type="password" autocomplete="current-password" placeholder="رمز عبور">
  <button class="primary" style="width:100%;margin-top:16px" onclick="signIn()">ورود</button>
@@ -36,18 +36,18 @@ input,select{width:100%;border:1px solid var(--line);background:#fff;padding:12p
 <section class="view active" id="home"><div class="section-head"><h2>خلاصه کسب‌وکار</h2><button class="secondary" onclick="refreshAll()">بروزرسانی</button></div>
 <div class="grid">
 <div class="stat"><div class="label">فروش ثبت‌شده</div><strong id="totalSales">۰ تومان</strong></div>
-<div class="stat"><div class="label">سود ناخالص</div><strong id="totalProfit">۰ تومان</strong></div>
-<div class="stat"><div class="label">مجموع هزینه‌ها</div><strong id="dashboardExpenses">۰ تومان</strong></div>
-<div class="stat"><div class="label">سود خالص</div><strong id="netProfit">۰ تومان</strong></div>
+<div class="stat admin-only"><div class="label">سود ناخالص</div><strong id="totalProfit">۰ تومان</strong></div>
+<div class="stat admin-only"><div class="label">مجموع هزینه‌ها</div><strong id="dashboardExpenses">۰ تومان</strong></div>
+<div class="stat admin-only"><div class="label">سود خالص</div><strong id="netProfit">۰ تومان</strong></div>
 <div class="stat"><div class="label">تعداد کالاها</div><strong id="skuCount">۰</strong></div>
 <div class="stat"><div class="label">موجودی کل</div><strong id="stockCount">۰</strong></div>
 </div>
 <div class="actions"><button class="action" onclick="openSale()"><span>🧾</span>ثبت فروش<small>ثبت فاکتور</small></button><button class="action" onclick="openProduct()"><span>📦</span>افزودن کالا<small>ثبت کالای جدید</small></button><button class="action" onclick="openCustomer()"><span>👥</span>ثبت مشتری<small>ساخت پرونده</small></button></div>
 <div class="panel"><h3>آخرین فروش‌ها</h3><div id="recent"></div></div></section>
-<section class="view" id="sales"><div class="section-head"><h2>فروش‌ها</h2><button class="primary" onclick="openSale()">＋ ثبت فروش</button></div><div class="panel" id="salesList"></div></section>
+<section class="view" id="sales"><div class="section-head"><h2>فروش‌ها</h2><button class="primary" onclick="openSale()">＋ ثبت فروش</button></div><div class="toolbar"><input id="salesSearch" placeholder="جست‌وجوی کالا، مشتری یا فروشنده..." oninput="renderSalesHistory()"></div><div class="panel" id="salesList"></div></section>
 <section class="view" id="stock"><div class="section-head"><h2>انبار کالا</h2><button class="primary" onclick="openProduct()">＋ افزودن</button></div><div class="toolbar"><input id="stockSearch" placeholder="جست‌وجوی کالا..." oninput="renderStock()"></div><div class="panel" id="stockList"></div></section>
 <section class="view" id="customers"><div class="section-head"><h2>مشتریان</h2><button class="primary" onclick="openCustomer()">＋ افزودن</button></div><div class="toolbar"><input id="customerSearch" placeholder="نام یا شماره تماس..." oninput="renderCustomers()"></div><div class="panel" id="customerList"></div></section>
-<section class="view" id="more"><div class="section-head"><h2>گزارش‌ها</h2></div><div class="grid"><div class="stat"><div class="label">تعداد فاکتورها</div><strong id="invoiceCount">۰</strong></div><div class="stat"><div class="label">هزینه‌ها</div><strong id="expenseTotal">۰ تومان</strong></div></div><div class="panel"><div class="section-head"><h3>ثبت هزینه</h3><button class="primary" onclick="openExpense()">＋ هزینه</button></div><div id="expenseList"></div></div></section>
+<section class="view" id="more"><div class="section-head"><h2>گزارش‌ها</h2></div><div class="grid"><div class="stat"><div class="label">تعداد فاکتورها</div><strong id="invoiceCount">۰</strong></div><div class="stat admin-only"><div class="label">هزینه‌ها</div><strong id="expenseTotal">۰ تومان</strong></div></div><div class="panel admin-only"><div class="section-head"><h3>ثبت هزینه</h3><button class="primary" onclick="openExpense()">＋ هزینه</button></div><div id="expenseList"></div></div></section>
 </main></div>
 <div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -60,12 +60,14 @@ const configured = SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes
 const sb = configured ? window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY) : null;
 const $=id=>document.getElementById(id), fa=n=>new Intl.NumberFormat('fa-IR').format(Math.round(Number(n)||0)), money=n=>fa(n)+' تومان';
 let db={customers:[],products:[],sales:[],expenses:[]}, profile=null;
+function isAdmin(){return profile?.role==='admin'}
+function applyRoleUI(){document.querySelectorAll('.admin-only').forEach(el=>el.classList.toggle('hidden',!isAdmin()));$('roleLabel')?.remove();}
 function msg(t){$('loginMsg').textContent=t;$('loginMsg').classList.remove('hidden')}
 function dateNow(){return new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric'}).format(new Date())}
 async function signIn(){if(!sb)return msg('ابتدا تنظیمات Supabase را در فایل index.html وارد کن.');let {data,error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)return msg('ورود ناموفق: '+error.message);await startApp()}
 async function signOut(){await sb.auth.signOut();$('app').classList.add('hidden');$('login').classList.remove('hidden')}
-async function startApp(){let {data:{user}}=await sb.auth.getUser();if(!user)return;let {data:p,error}=await sb.from('profiles').select('full_name,role').eq('id',user.id).single();if(error||!p){await sb.auth.signOut();return msg('برای این حساب پروفایل مدیر تعریف نشده است. ابتدا دستور ساخت پروفایل را در راهنما اجرا کن.')}profile=p;$('login').classList.add('hidden');$('app').classList.remove('hidden');$('today').textContent=dateNow()+' · '+(p.full_name||user.email);await refreshAll()}
-async function refreshAll(){if(!sb)return;try{let [c,p,s,e]=await Promise.all([sb.from('customers').select('*').order('created_at',{ascending:false}),sb.from('products').select('*').order('name'),sb.from('sales').select('*,products(name),customers(name)').order('created_at',{ascending:false}),sb.from('expenses').select('*').order('created_at',{ascending:false})]);for(let r of [c,p,s,e])if(r.error)throw r.error;db={customers:c.data,products:p.data,sales:s.data,expenses:e.data};renderAll()}catch(err){alert('خطا در دریافت اطلاعات: '+err.message)}}
+async function startApp(){let {data:{user}}=await sb.auth.getUser();if(!user)return;let {data:p,error}=await sb.from('profiles').select('full_name,role').eq('id',user.id).single();if(error||!p){await sb.auth.signOut();return msg('برای این حساب پروفایل مدیر تعریف نشده است. ابتدا دستور ساخت پروفایل را در راهنما اجرا کن.')}profile=p;$('login').classList.add('hidden');$('app').classList.remove('hidden');$('today').textContent=dateNow()+' · '+(p.full_name||user.email);applyRoleUI();await refreshAll()}
+async function refreshAll(){if(!sb)return;try{let [c,p,s,e]=await Promise.all([sb.from('customers').select('*').order('created_at',{ascending:false}),sb.from('products').select('id,name,sku,quantity,sell_price').order('name'),sb.rpc('get_sales_history'),isAdmin()?sb.from('expenses').select('*').order('created_at',{ascending:false}):Promise.resolve({data:[],error:null})]);for(let r of [c,p,s,e])if(r.error)throw r.error;db={customers:c.data||[],products:p.data||[],sales:Array.isArray(s.data)?s.data:[],expenses:e.data||[]};renderAll()}catch(err){alert('خطا در دریافت اطلاعات: '+err.message)}}
 function showView(v){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===v));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.view===v))}
 $('nav').addEventListener('click',e=>{let b=e.target.closest('button[data-view]');if(b)showView(b.dataset.view)});
 function openModal(h){$('modal').innerHTML=h;$('overlay').classList.add('show')}function closeModal(){$('overlay').classList.remove('show')}
@@ -80,26 +82,29 @@ async function addExpense(){let title=$('ename').value.trim(),amount=+$('eamount
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function renderCustomers(){let q=($('customerSearch')?.value||'').toLowerCase(),a=db.customers.filter(c=>(c.name+' '+(c.phone||'')+' '+(c.city||'')).toLowerCase().includes(q));$('customerList').innerHTML=a.length?a.map(c=>`<div class="tableitem"><div><strong>${esc(c.name)}</strong><small>${esc(c.phone||'بدون شماره')} · ${esc(c.city||'—')} · ${esc(c.product_interest||'')}</small></div><span class="pill">${esc(c.status||'مشتری')}</span></div>`).join(''):'<div class="empty">هنوز مشتری ثبت نشده است.</div>'}
 function renderStock(){let q=($('stockSearch')?.value||'').toLowerCase(),a=db.products.filter(p=>(p.name+' '+(p.sku||'')).toLowerCase().includes(q));$('stockList').innerHTML=a.length?a.map(p=>`<div class="tableitem"><div><strong>${esc(p.name)}</strong><small>کد: ${esc(p.sku||'—')} · خرید: ${money(p.buy_price)} · فروش: ${money(p.sell_price)}</small></div><div><b>${fa(p.quantity)} عدد</b><small>${p.quantity<=3?'موجودی کم':'موجود'}</small></div></div>`).join(''):'<div class="empty">هنوز کالایی ثبت نشده است.</div>'}
+function renderSalesHistory(){
+ const q=($('salesSearch')?.value||'').trim().toLowerCase();
+ const rows=db.sales.filter(s=>[s.product_name,s.customer_name,s.seller_name].some(v=>String(v||'').toLowerCase().includes(q)));
+ $('salesList').innerHTML=rows.map(s=>{
+  const amount=Number(s.quantity)*Number(s.sell_price);
+  const date=s.created_at?new Date(s.created_at).toLocaleString('fa-IR'):'—';
+  const adminDetail=isAdmin()&&s.buy_price!==null&&s.buy_price!==undefined?`<small>بهای خرید واحد: ${money(s.buy_price)} · سود این فاکتور: ${money(Number(s.quantity)*(Number(s.sell_price)-Number(s.buy_price)))}</small>`:'';
+  return `<div class="tableitem"><div><strong>${esc(s.product_name||'کالا')} × ${fa(s.quantity)}</strong><small>مشتری: ${esc(s.customer_name||'مشتری متفرقه')} · فروشنده: ${esc(s.seller_name||'نامشخص')}</small><small>${date}</small>${adminDetail}</div><b>${money(amount)}</b></div>`;
+ }).join('')||'<div class="empty">فاکتوری مطابق جست‌وجو پیدا نشد.</div>';
+}
 function renderAll(){
- let total=db.sales.reduce((n,s)=>n+Number(s.quantity)*Number(s.sell_price),0);
- let profit=db.sales.reduce((n,s)=>n+Number(s.quantity)*(Number(s.sell_price)-Number(s.buy_price)),0);
- let qty=db.products.reduce((n,p)=>n+Number(p.quantity),0);
- let expenses=db.expenses.reduce((n,e)=>n+Number(e.amount),0);
- let netProfit=profit-expenses;
+ const total=db.sales.reduce((n,s)=>n+Number(s.quantity)*Number(s.sell_price),0);
+ const profit=db.sales.reduce((n,s)=>n+(s.buy_price==null?0:Number(s.quantity)*(Number(s.sell_price)-Number(s.buy_price))),0);
+ const qty=db.products.reduce((n,p)=>n+Number(p.quantity),0);
+ const expenses=db.expenses.reduce((n,e)=>n+Number(e.amount),0);
  $('totalSales').textContent=money(total);
- $('totalProfit').textContent=money(profit);
- $('dashboardExpenses').textContent=money(expenses);
- $('netProfit').textContent=money(netProfit);
  $('skuCount').textContent=fa(db.products.length);
  $('stockCount').textContent=fa(qty);
  $('invoiceCount').textContent=fa(db.sales.length);
- $('expenseTotal').textContent=money(expenses);
- renderStock();
- renderCustomers();
- let salesHtml=db.sales.map(s=>`<div class="tableitem"><div><strong>${esc(s.products?.name||'کالا')} × ${fa(s.quantity)}</strong><small>${esc(s.customers?.name||'مشتری متفرقه')} · ${new Date(s.created_at).toLocaleDateString('fa-IR')}</small></div><b>${money(s.quantity*s.sell_price)}</b></div>`).join('')||'<div class="empty">هنوز فروشی ثبت نشده است.</div>';
- $('salesList').innerHTML=salesHtml;
- $('recent').innerHTML=db.sales.slice(0,4).map(s=>`<div class="row"><b>${esc(s.products?.name||'کالا')}</b><b>${money(s.quantity*s.sell_price)}</b></div>`).join('')||'<div class="empty">هنوز فعالیتی ثبت نشده است.</div>';
- $('expenseList').innerHTML=db.expenses.map(e=>`<div class="row"><b>${esc(e.title)}</b><b>${money(e.amount)}</b></div>`).join('')||'<div class="empty">هزینه‌ای ثبت نشده است.</div>';
+ if(isAdmin()){$('totalProfit').textContent=money(profit);$('dashboardExpenses').textContent=money(expenses);$('netProfit').textContent=money(profit-expenses);$('expenseTotal').textContent=money(expenses)}
+ renderStock();renderCustomers();renderSalesHistory();
+ $('recent').innerHTML=db.sales.slice(0,4).map(s=>`<div class="row"><div><b>${esc(s.product_name||'کالا')}</b><small>${esc(s.seller_name||'نامشخص')}</small></div><b>${money(Number(s.quantity)*Number(s.sell_price))}</b></div>`).join('')||'<div class="empty">هنوز فعالیتی ثبت نشده است.</div>';
+ if(isAdmin())$('expenseList').innerHTML=db.expenses.map(e=>`<div class="row"><b>${esc(e.title)}</b><b>${money(e.amount)}</b></div>`).join('')||'<div class="empty">هزینه‌ای ثبت نشده است.</div>';
 }
 (async()=>{if(!configured){msg('تنظیمات اتصال Supabase هنوز وارد نشده است.');return}let {data:{session}}=await sb.auth.getSession();if(session)await startApp();sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){$('app').classList.add('hidden');$('login').classList.remove('hidden')}})})();
 </script></body></html>
