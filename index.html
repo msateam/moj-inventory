@@ -34,7 +34,14 @@ input,select{width:100%;border:1px solid var(--line);background:#fff;padding:12p
 </nav>
 <main>
 <section class="view active" id="home"><div class="section-head"><h2>خلاصه کسب‌وکار</h2><button class="secondary" onclick="refreshAll()">بروزرسانی</button></div>
-<div class="grid"><div class="stat"><div class="label">فروش ثبت‌شده</div><strong id="totalSales">۰ تومان</strong></div><div class="stat"><div class="label">سود ناخالص</div><strong id="totalProfit">۰ تومان</strong></div><div class="stat"><div class="label">تعداد کالاها</div><strong id="skuCount">۰</strong></div><div class="stat"><div class="label">موجودی کل</div><strong id="stockCount">۰</strong></div></div>
+<div class="grid">
+<div class="stat"><div class="label">فروش ثبت‌شده</div><strong id="totalSales">۰ تومان</strong></div>
+<div class="stat"><div class="label">سود ناخالص</div><strong id="totalProfit">۰ تومان</strong></div>
+<div class="stat"><div class="label">مجموع هزینه‌ها</div><strong id="dashboardExpenses">۰ تومان</strong></div>
+<div class="stat"><div class="label">سود خالص</div><strong id="netProfit">۰ تومان</strong></div>
+<div class="stat"><div class="label">تعداد کالاها</div><strong id="skuCount">۰</strong></div>
+<div class="stat"><div class="label">موجودی کل</div><strong id="stockCount">۰</strong></div>
+</div>
 <div class="actions"><button class="action" onclick="openSale()"><span>🧾</span>ثبت فروش<small>ثبت فاکتور</small></button><button class="action" onclick="openProduct()"><span>📦</span>افزودن کالا<small>ثبت کالای جدید</small></button><button class="action" onclick="openCustomer()"><span>👥</span>ثبت مشتری<small>ساخت پرونده</small></button></div>
 <div class="panel"><h3>آخرین فروش‌ها</h3><div id="recent"></div></div></section>
 <section class="view" id="sales"><div class="section-head"><h2>فروش‌ها</h2><button class="primary" onclick="openSale()">＋ ثبت فروش</button></div><div class="panel" id="salesList"></div></section>
@@ -73,6 +80,26 @@ async function addExpense(){let title=$('ename').value.trim(),amount=+$('eamount
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function renderCustomers(){let q=($('customerSearch')?.value||'').toLowerCase(),a=db.customers.filter(c=>(c.name+' '+(c.phone||'')+' '+(c.city||'')).toLowerCase().includes(q));$('customerList').innerHTML=a.length?a.map(c=>`<div class="tableitem"><div><strong>${esc(c.name)}</strong><small>${esc(c.phone||'بدون شماره')} · ${esc(c.city||'—')} · ${esc(c.product_interest||'')}</small></div><span class="pill">${esc(c.status||'مشتری')}</span></div>`).join(''):'<div class="empty">هنوز مشتری ثبت نشده است.</div>'}
 function renderStock(){let q=($('stockSearch')?.value||'').toLowerCase(),a=db.products.filter(p=>(p.name+' '+(p.sku||'')).toLowerCase().includes(q));$('stockList').innerHTML=a.length?a.map(p=>`<div class="tableitem"><div><strong>${esc(p.name)}</strong><small>کد: ${esc(p.sku||'—')} · خرید: ${money(p.buy_price)} · فروش: ${money(p.sell_price)}</small></div><div><b>${fa(p.quantity)} عدد</b><small>${p.quantity<=3?'موجودی کم':'موجود'}</small></div></div>`).join(''):'<div class="empty">هنوز کالایی ثبت نشده است.</div>'}
-function renderAll(){let total=db.sales.reduce((n,s)=>n+Number(s.quantity)*Number(s.sell_price),0),profit=db.sales.reduce((n,s)=>n+Number(s.quantity)*(Number(s.sell_price)-Number(s.buy_price)),0),qty=db.products.reduce((n,p)=>n+Number(p.quantity),0),expenses=db.expenses.reduce((n,e)=>n+Number(e.amount),0);$('totalSales').textContent=money(total);$('totalProfit').textContent=money(profit);$('skuCount').textContent=fa(db.products.length);$('stockCount').textContent=fa(qty);$('invoiceCount').textContent=fa(db.sales.length);$('expenseTotal').textContent=money(expenses);renderStock();renderCustomers();let salesHtml=db.sales.map(s=>`<div class="tableitem"><div><strong>${esc(s.products?.name||'کالا')} × ${fa(s.quantity)}</strong><small>${esc(s.customers?.name||'مشتری متفرقه')} · ${new Date(s.created_at).toLocaleDateString('fa-IR')}</small></div><b>${money(s.quantity*s.sell_price)}</b></div>`).join('')||'<div class="empty">هنوز فروشی ثبت نشده است.</div>';$('salesList').innerHTML=salesHtml;$('recent').innerHTML=db.sales.slice(0,4).map(s=>`<div class="row"><b>${esc(s.products?.name||'کالا')}</b><b>${money(s.quantity*s.sell_price)}</b></div>`).join('')||'<div class="empty">هنوز فعالیتی ثبت نشده است.</div>';$('expenseList').innerHTML=db.expenses.map(e=>`<div class="row"><b>${esc(e.title)}</b><b>${money(e.amount)}</b></div>`).join('')||'<div class="empty">هزینه‌ای ثبت نشده است.</div>'}
+function renderAll(){
+ let total=db.sales.reduce((n,s)=>n+Number(s.quantity)*Number(s.sell_price),0);
+ let profit=db.sales.reduce((n,s)=>n+Number(s.quantity)*(Number(s.sell_price)-Number(s.buy_price)),0);
+ let qty=db.products.reduce((n,p)=>n+Number(p.quantity),0);
+ let expenses=db.expenses.reduce((n,e)=>n+Number(e.amount),0);
+ let netProfit=profit-expenses;
+ $('totalSales').textContent=money(total);
+ $('totalProfit').textContent=money(profit);
+ $('dashboardExpenses').textContent=money(expenses);
+ $('netProfit').textContent=money(netProfit);
+ $('skuCount').textContent=fa(db.products.length);
+ $('stockCount').textContent=fa(qty);
+ $('invoiceCount').textContent=fa(db.sales.length);
+ $('expenseTotal').textContent=money(expenses);
+ renderStock();
+ renderCustomers();
+ let salesHtml=db.sales.map(s=>`<div class="tableitem"><div><strong>${esc(s.products?.name||'کالا')} × ${fa(s.quantity)}</strong><small>${esc(s.customers?.name||'مشتری متفرقه')} · ${new Date(s.created_at).toLocaleDateString('fa-IR')}</small></div><b>${money(s.quantity*s.sell_price)}</b></div>`).join('')||'<div class="empty">هنوز فروشی ثبت نشده است.</div>';
+ $('salesList').innerHTML=salesHtml;
+ $('recent').innerHTML=db.sales.slice(0,4).map(s=>`<div class="row"><b>${esc(s.products?.name||'کالا')}</b><b>${money(s.quantity*s.sell_price)}</b></div>`).join('')||'<div class="empty">هنوز فعالیتی ثبت نشده است.</div>';
+ $('expenseList').innerHTML=db.expenses.map(e=>`<div class="row"><b>${esc(e.title)}</b><b>${money(e.amount)}</b></div>`).join('')||'<div class="empty">هزینه‌ای ثبت نشده است.</div>';
+}
 (async()=>{if(!configured){msg('تنظیمات اتصال Supabase هنوز وارد نشده است.');return}let {data:{session}}=await sb.auth.getSession();if(session)await startApp();sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){$('app').classList.add('hidden');$('login').classList.remove('hidden')}})})();
 </script></body></html>
